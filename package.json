@@ -1,0 +1,35 @@
+{
+  "name": "ip-access-control-api",
+  "version": "1.0.0",
+  "description": "IP-based access control REST API",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "db:setup": "node database/setup.js",
+    "db:seed": "node database/seed.js",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kylsol/ip-access-control-api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kylsol/ip-access-control-api/issues"
+  },
+  "homepage": "https://github.com/Kylsol/ip-access-control-api#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.1.4"
+  }
+}
