@@ -118,13 +118,3 @@ Tests include:
 *[Public API documentation link](https://www.postman.com/kkyyllee-ks-8217982/workspace/test/collection/49928997-6eafa8d0-ce82-4f08-9afa-a51d45055e60?action=share&creator=49928997)*
 
 ---
-
-## **Future Improvements (Final Project Requirements)**
-
-These will be implemented in the next phase:
-
-* User authentication (JWT)
-* Role-based authorization (admin/security/client)
-* `/access/check` endpoint for IP verification logic
-* Deployment to Render/Railway
-* Additional test coverage (auth, protected routes)
