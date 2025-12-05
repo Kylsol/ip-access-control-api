@@ -10,11 +10,14 @@ const userRoutes = require('./routes/users');
 const serviceRoutes = require('./routes/services');
 const ipRoutes = require('./routes/ipRecords');
 const logRoutes = require('./routes/accessLogs');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
 app.use(express.json());
 app.use(logger);
+
+app.use('/auth', authRoutes);
 
 app.use('/users', userRoutes);
 app.use('/services', serviceRoutes);
