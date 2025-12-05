@@ -1,14 +1,4 @@
 # ip-access-control-api
-
-No problem — I’ll write you a **clean, simple README** that fits your project *exactly* and meets the final project requirements (MVP stage).
-You can paste this directly into `README.md` in your repo.
-
----
-
-# ✅ **README.md (Perfect for MVP Stage)**
-
-*(Short, clear, professional — exactly what instructors look for)*
-
 # **IP Access Control API (MVP)**
 
 This project is an IP Access Control REST API that allows users, services, and approved IP records to be managed through a relational database. The goal is to provide a backend foundation for a system that verifies whether a user’s IP address is allowed to access a specific internal service.
@@ -125,8 +115,7 @@ Tests include:
 
 ## **Postman Documentation**
 
-Public API documentation link:
-*(Paste your Postman public link here)*
+*[Public API documentation link](https://www.postman.com/kkyyllee-ks-8217982/workspace/test/collection/49928997-6eafa8d0-ce82-4f08-9afa-a51d45055e60?action=share&creator=49928997)*
 
 ---
 
