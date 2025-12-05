@@ -1,6 +1,10 @@
 // Global error-handling middleware.
 // This catches any errors thrown in routes, controllers, or Sequelize operations
 // and ensures the API responds with a clean, consistent JSON structure.
+
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+
 function errorHandler(err, req, res, next) {
     console.error('Error:', err); // Log full error details for debugging (not exposed to client)
   

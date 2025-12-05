@@ -1,45 +1,43 @@
 // middleware/auth.js
+// Handles JWT authentication and role-based authorization.
+
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
-const tokenBlacklist = new Set(); // simple in-memory blacklist for logout demo
-
-function extractToken(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  return authHeader.substring(7);
-}
-
-// Require any authenticated user
+// Authenticate any logged-in user via JWT
 function requireAuth(req, res, next) {
-  const token = extractToken(req);
-  if (!token) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
-  if (tokenBlacklist.has(token)) {
-    return res.status(401).json({ error: 'Token has been logged out' });
-  }
+  const token = authHeader.substring(7); // remove "Bearer "
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach the minimal user info you need for RBAC/ownership checks
+    // Attach user info from token to request
     req.user = {
       id: decoded.id,
+      name: decoded.name,
       email: decoded.email,
-      role: decoded.role,
+      role: decoded.role
     };
 
     next();
-  } catch (err) {
-    if (err.name === 'TokenExpiredError') {
+  } catch (error) {
+    console.error('JWT verification error:', error);
+
+    if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired, please log in again' });
     }
+
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
 
-// Role-based middleware
+// Restrict route to specific roles
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user) {
@@ -54,19 +52,7 @@ function requireRole(...allowedRoles) {
   };
 }
 
-// Logout helper
-function logout(req, res) {
-  const token = extractToken(req);
-  if (!token) {
-    return res.status(400).json({ error: 'No token provided' });
-  }
-
-  tokenBlacklist.add(token);
-  return res.status(200).json({ message: 'Logged out successfully' });
-}
-
 module.exports = {
   requireAuth,
-  requireRole,
-  logout,
+  requireRole
 };

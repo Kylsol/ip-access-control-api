@@ -1,32 +1,49 @@
+// routes/ipRecords.js
+// Handles CRUD operations for approved IPs.
+// Each IP is tied to a user and a service.
+
 const express = require('express');
 const router = express.Router();
+
 const { IpRecord } = require('../database/models');
+const { requireAuth } = require('../middleware/auth');
 
-// -------------------------------------------
-// IP Record Routes
-// Handles CRUD operations for approved IPs
-// Each IP is tied to a user and a service
-// -------------------------------------------
-
-// GET /ips - return all IP records
-// Useful for viewing all approved IP addresses in the system
-router.get('/', async (req, res, next) => {
+// -------------------------
+// GET /ips
+// Admin: see all IP records
+// Client: see only their own
+// -------------------------
+router.get('/', requireAuth, async (req, res, next) => {
   try {
-    const ips = await IpRecord.findAll();
+    const where =
+      req.user.role === 'admin'
+        ? {}
+        : { userId: req.user.id }; // match model field names
+
+    const ips = await IpRecord.findAll({ where });
     res.json(ips);
   } catch (err) {
-    next(err); // Pass to global error handler
+    next(err);
   }
 });
 
-// GET /ips/:id - return a single IP record by primary key
-// Provides detailed info for editing or verifying a specific IP
-router.get('/:id', async (req, res, next) => {
+// -------------------------
+// GET /ips/:id
+// Admin: can see any record
+// Client: can only see their own
+// -------------------------
+router.get('/:id', requireAuth, async (req, res, next) => {
   try {
     const ip = await IpRecord.findByPk(req.params.id);
 
-    // If IP not found, return a clean 404
-    if (!ip) return res.status(404).json({ error: 'IP record not found' });
+    if (!ip) {
+      return res.status(404).json({ error: 'IP record not found' });
+    }
+
+    // ownership check for non-admins
+    if (req.user.role !== 'admin' && ip.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden: not your IP record' });
+    }
 
     res.json(ip);
   } catch (err) {
@@ -34,39 +51,55 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /ips - create a new IP record
-// Requires an ipAddress and userId; serviceId is optional
-router.post('/', async (req, res, next) => {
+// -------------------------
+// POST /ips
+// Creates a new IP record for the authenticated user.
+// userId comes from req.user.id (never from the body).
+// -------------------------
+router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const { ipAddress, label, userId, serviceId } = req.body;
+    const { serviceId, ipAddress, label } = req.body;
 
-    // Basic validation to avoid empty inserts
-    if (!ipAddress || !userId) {
-      return res.status(400).json({ error: 'ipAddress and userId are required' });
+    if (!ipAddress || !serviceId) {
+      return res
+        .status(400)
+        .json({ error: 'ipAddress and serviceId are required' });
     }
 
-    // Create new IP record linked to a user and optionally a service
-    const newIp = await IpRecord.create({ ipAddress, label, userId, serviceId });
-    res.status(201).json(newIp);
+    const newRecord = await IpRecord.create({
+      ipAddress,
+      label,
+      serviceId,        // <-- lowercase, matches model
+      userId: req.user.id // <-- lowercase, matches model
+    });
+
+    res.status(201).json(newRecord);
   } catch (err) {
     next(err);
   }
 });
 
-// PUT /ips/:id - update an existing IP record
-// Only updates fields provided in the request body
-router.put('/:id', async (req, res, next) => {
+// -------------------------
+// PUT /ips/:id
+// Admin: can update any record
+// Client: can only update their own
+// -------------------------
+router.put('/:id', requireAuth, async (req, res, next) => {
   try {
-    const { ipAddress, label, userId, serviceId } = req.body;
+    const { ipAddress, label, serviceId } = req.body;
 
-    // Fetch the existing record
     const ip = await IpRecord.findByPk(req.params.id);
-    if (!ip) return res.status(404).json({ error: 'IP record not found' });
+    if (!ip) {
+      return res.status(404).json({ error: 'IP record not found' });
+    }
 
-    // Update only the fields included in the request
+    // ownership check for non-admins
+    if (req.user.role !== 'admin' && ip.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden: not your IP record' });
+    }
+
     if (ipAddress !== undefined) ip.ipAddress = ipAddress;
     if (label !== undefined) ip.label = label;
-    if (userId !== undefined) ip.userId = userId;
     if (serviceId !== undefined) ip.serviceId = serviceId;
 
     await ip.save();
@@ -76,16 +109,24 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /ips/:id - remove an IP record
-// Returns 204 No Content if deletion succeeds
-router.delete('/:id', async (req, res, next) => {
+// -------------------------
+// DELETE /ips/:id
+// Admin: can delete any record
+// Client: can delete only their own
+// -------------------------
+router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
-    const deleted = await IpRecord.destroy({ where: { id: req.params.id } });
+    const ip = await IpRecord.findByPk(req.params.id);
+    if (!ip) {
+      return res.status(404).json({ error: 'IP record not found' });
+    }
 
-    // If nothing was deleted, return a clean 404
-    if (!deleted) return res.status(404).json({ error: 'IP record not found' });
+    if (req.user.role !== 'admin' && ip.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden: not your IP record' });
+    }
 
-    res.status(204).send(); // Successful deletion with no body
+    await ip.destroy();
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

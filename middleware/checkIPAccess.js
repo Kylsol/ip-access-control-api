@@ -2,6 +2,8 @@
 // Middleware to verify that the current user's IP is allowed
 // to access a specific Service based on IPRecord entries.
 
+const { requireAuth, requireRole } = require('../middleware/auth');
+
 const { IPRecord, Service } = require('../database/models');
 
 function ipToInt(ip) {
