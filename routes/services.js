@@ -1,31 +1,32 @@
 // Express router for all Service-related endpoints.
-// Provides full CRUD operations for the Service model.
+// Provides full CRUD operations for the Service model with role-based access control.
 const express = require('express');
 const router = express.Router();
-const { Service } = require('../database/models');
 
+const { Service } = require('../database/models');
+const { requireAuth, requireRole } = require('../middleware/auth');
+const checkIpAccess = require('../middleware/checkIpAccess');
 
 // -------------------------
 // GET /services
 // Returns a list of all services in the system.
+// Any authenticated user can access this.
 // -------------------------
-router.get('/', async (req, res, next) => {
+router.get('/', requireAuth, async (req, res, next) => {
   try {
     const services = await Service.findAll();
     res.json(services);
   } catch (err) {
-    // Passes error to centralized error handler
     next(err);
   }
 });
 
-
 // -------------------------
 // GET /services/:id
 // Returns a single service by primary key.
-// Useful for inspecting or editing a specific service.
+// Any authenticated user can view details.
 // -------------------------
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireAuth, async (req, res, next) => {
   try {
     const service = await Service.findByPk(req.params.id);
 
@@ -39,13 +40,42 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// -------------------------
+// GET /services/:id/access-check
+// Checks whether the current authenticated user, from their current IP,
+// is allowed to access this service based on IPRecord entries.
+// -------------------------
+router.get('/:id/access-check', requireAuth, checkIpAccess, async (req, res, next) => {
+  try {
+    // checkIpAccess already validated IP and service and attached them
+    const service = req.service || (await Service.findByPk(req.params.id));
+
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    return res.status(200).json({
+      message: 'Access granted for this IP and user',
+      service,
+      ip: req.clientIp,
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // -------------------------
 // POST /services
 // Creates a new service.
+// Restricted to admin users.
 // 'name' is required and must be unique due to model constraints.
 // -------------------------
-router.post('/', async (req, res, next) => {
+router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
   try {
     const { name, description } = req.body;
 
@@ -62,13 +92,12 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-
 // -------------------------
 // PUT /services/:id
 // Updates an existing service. Only provided fields are updated.
-// Good for incremental edits to service metadata.
+// Restricted to admin users.
 // -------------------------
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireAuth, requireRole('admin'), async (req, res, next) => {
   try {
     const { name, description, active } = req.body;
     const service = await Service.findByPk(req.params.id);
@@ -77,7 +106,6 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    // Only update fields that are included in the request body
     if (name !== undefined) service.name = name;
     if (description !== undefined) service.description = description;
     if (active !== undefined) service.active = active;
@@ -89,13 +117,13 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-
 // -------------------------
 // DELETE /services/:id
 // Deletes a service permanently.
+// Restricted to admin users.
 // Returns 204 No Content on success.
 // -------------------------
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res, next) => {
   try {
     const deleted = await Service.destroy({ where: { id: req.params.id } });
 
@@ -108,7 +136,6 @@ router.delete('/:id', async (req, res, next) => {
     next(err);
   }
 });
-
 
 // Export router for use in app.js
 module.exports = router;

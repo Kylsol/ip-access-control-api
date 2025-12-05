@@ -2,7 +2,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User } = require('../database/models');
+const User = require('../database/models/User');
+const { logout } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -12,12 +13,12 @@ router.post('/register', async (req, res, next) => {
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+      return res.status(400).json({ error: 'name, email, and password are required' });
     }
 
     const existing = await User.findOne({ where: { email } });
     if (existing) {
-      return res.status(400).json({ error: 'Email is already in use' });
+      return res.status(409).json({ error: 'Email is already in use' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -25,16 +26,16 @@ router.post('/register', async (req, res, next) => {
     const user = await User.create({
       name,
       email,
-      role: role || 'client',
-      passwordHash
+      passwordHash,
+      role: role || 'client', // default role
     });
 
-    // Do not return passwordHash
-    res.status(201).json({
+    // Do not send passwordHash back
+    return res.status(201).json({
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
   } catch (err) {
     next(err);
@@ -47,36 +48,36 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: 'email and password are required' });
     }
 
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
     );
 
-    res.json({ token });
+    return res.status(200).json({ token });
   } catch (err) {
     next(err);
   }
 });
 
-// Simple logout – for stateless JWT this just tells the client to delete the token
-router.post('/logout', (req, res) => {
-  // In a real token blacklist system you would store the token somewhere.
-  // For this class, it is enough to let the client drop the token.
-  res.json({ message: 'Logged out. Please discard your token on the client.' });
-});
+// POST /auth/logout
+router.post('/logout', logout);
 
 module.exports = router;

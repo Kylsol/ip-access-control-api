@@ -1,44 +1,72 @@
 // middleware/auth.js
 const jwt = require('jsonwebtoken');
-const { User } = require('../database/models');
 
-// Require a valid JWT
-async function requireAuth(req, res, next) {
+const tokenBlacklist = new Set(); // simple in-memory blacklist for logout demo
+
+function extractToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  return authHeader.substring(7);
+}
+
+// Require any authenticated user
+function requireAuth(req, res, next) {
+  const token = extractToken(req);
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  if (tokenBlacklist.has(token)) {
+    return res.status(401).json({ error: 'Token has been logged out' });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization header missing or invalid' });
-    }
-
-    const token = authHeader.substring(7);
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findByPk(decoded.id);
-    if (!user) {
-      return res.status(401).json({ error: 'User for this token no longer exists' });
-    }
-
+    // Attach the minimal user info you need for RBAC/ownership checks
     req.user = {
-      id: user.id,
-      role: user.role
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
     };
 
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired, please log in again' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }
 
-// Require specific roles (we will use this in the next step)
-function requireRole(...roles) {
+// Role-based middleware
+function requireRole(...allowedRoles) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
     }
+
     next();
   };
 }
 
-module.exports = { requireAuth, requireRole };
+// Logout helper
+function logout(req, res) {
+  const token = extractToken(req);
+  if (!token) {
+    return res.status(400).json({ error: 'No token provided' });
+  }
+
+  tokenBlacklist.add(token);
+  return res.status(200).json({ message: 'Logged out successfully' });
+}
+
+module.exports = {
+  requireAuth,
+  requireRole,
+  logout,
+};

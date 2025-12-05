@@ -1,33 +1,54 @@
 // app.js
 require('dotenv').config();
-const express = require('express');
-const { sequelize } = require('./database/models');
 
-const logger = require('./middleware/logger');
-const errorHandler = require('./middleware/errorHandler');
+const express = require('express');
+const app = express();
 
 const userRoutes = require('./routes/users');
 const serviceRoutes = require('./routes/services');
 const ipRoutes = require('./routes/ipRecords');
-const logRoutes = require('./routes/accessLogs');
+const logRoutes = require('./routes/logs');
 const authRoutes = require('./routes/auth');
 
-const app = express();
+const { requireAuth, requireRole } = require('./middleware/auth');
+const logger = require('./middleware/logger');
+const errorHandler = require('./middleware/errorHandler');
 
+// Core middleware
 app.use(express.json());
 app.use(logger);
 
+// Public auth routes
 app.use('/auth', authRoutes);
 
-app.use('/users', userRoutes);
-app.use('/services', serviceRoutes);
-app.use('/ips', ipRoutes);
-app.use('/logs', logRoutes);
+// Protected / RBAC routes
+app.use(
+  '/users',
+  requireAuth,
+  requireRole('admin'), // only admins manage users
+  userRoutes
+);
 
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
+// Example: services available to authenticated users
+app.use('/services', requireAuth, serviceRoutes);
 
+// Example: IP records available to admins + security roles
+app.use(
+  '/ips',
+  requireAuth,
+  requireRole('admin', 'security'),
+  ipRoutes
+);
+
+// Example: logs available to admins and auditors
+app.use(
+  '/logs',
+  requireAuth,
+  requireRole('admin', 'auditor'),
+  logRoutes
+);
+
+// Error handler
 app.use(errorHandler);
 
-module.exports = { app, sequelize };
+module.exports = app;
