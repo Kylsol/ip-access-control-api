@@ -48,6 +48,14 @@ app.use(
   logRoutes
 );
 
+app.get('/', (req, res) => {
+  res.json({
+    message: 'IP Access Control API is running',
+    docs: 'Use the Postman collection to interact with the endpoints.'
+  });
+});
+
+
 // Error handler
 app.use(errorHandler);
 
