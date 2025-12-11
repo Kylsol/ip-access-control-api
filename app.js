@@ -77,6 +77,9 @@ app.get('/', (req, res) => {
             color: #6abdfc;
             text-decoration: none;
           }
+          a:hover {
+            text-decoration: underline;
+          }
         </style>
       </head>
       <body>
@@ -89,7 +92,12 @@ app.get('/', (req, res) => {
         <div class="tag">Sequelize + SQLite</div>
 
         <h3 style="margin-top:30px;">📘 Documentation</h3>
-        <p>Use your Postman Collection to interact with protected endpoints.</p>
+        <p>
+          Use the Postman Collection to interact with protected endpoints:<br>
+          👉 <a href="https://www.postman.com/kkyyllee-ks-8217982/workspace/test/collection/49928997-6eafa8d0-ce82-4f08-9afa-a51d45055e60?action=share&creator=49928997" target="_blank">
+            Open Postman Documentation
+          </a>
+        </p>
 
         <h3>🟢 Status: Live</h3>
         <p>Requests may take a few seconds to wake the service on the free tier.</p>
@@ -97,6 +105,7 @@ app.get('/', (req, res) => {
     </html>
   `);
 });
+
 
 
 
