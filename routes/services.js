@@ -5,7 +5,7 @@ const router = express.Router();
 
 const { Service } = require('../database/models');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const checkIpAccess = require('../middleware/checkIpAccess');
+const checkIpAccess = require('../middleware/checkIPAccess');
 
 // -------------------------
 // GET /services
