@@ -45,9 +45,9 @@ router.get('/:id', requireAuth, async (req, res, next) => {
 // Checks whether the current authenticated user, from their current IP,
 // is allowed to access this service based on IPRecord entries.
 // -------------------------
-router.get('/:id/access-check', requireAuth, checkIpAccess, async (req, res, next) => {
+router.get('/:id/access-check', requireAuth, checkIPAccess, async (req, res, next) => {
   try {
-    // checkIpAccess already validated IP and service and attached them
+    // checkIPAccess already validated IP and service and attached them
     const service = req.service || (await Service.findByPk(req.params.id));
 
     if (!service) {
